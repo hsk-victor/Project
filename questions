@@ -1,1 +1,13 @@
-**QN**
+
+3. Each model uses different dataset?
+
+
+
+7. Get rid of month/years column?
+
+9. Should not drop any columns on original dataset
+
+
+- confused regarding the iterative process of feature selection then guaging whether it improves model performance or not
+- how to determine which features to drop or keep\
+- I want to keep the transaction year, but I am worried that since it is the start of the year, 2026 data may not be representative enough, do I amend the data?
