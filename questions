@@ -1,11 +1,17 @@
 
 
 
-- confused regarding the iterative process of feature selection then guaging whether it improves model performance or not
-- how to determine which features to drop or keep\
-- I want to keep the transaction year, but I am worried that since it is the start of the year, 2026 data may not be representative enough, do I amend the data?
 
+keep or remove niche categories.
+make data set smaller by just random or should i make my dataset from like 2023 onwards
+geocoding
+can i do all featue engineering prior to using another model (decision tree) for feature selection.
 
 notes:
 
 section it to data type stndardization, data transformation
+
+
+
+## Access Token
+eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxMDk3MywiZm9yZXZlciI6ZmFsc2UsImlzcyI6Ik9uZU1hcCIsImlhdCI6MTc2ODc4ODM4OSwibmJmIjoxNzY4Nzg4Mzg5LCJleHAiOjE3NjkwNDc1ODksImp0aSI6IjcwNWEwNmUxLTEwYTctNDk4Ni1iYjY3LWY1OGI2NmQ0OTI5ZCJ9.pjNHxAdz8nyXjZuzBg4HNLmuF5rOt7C7DeMWsehBqds6xlLifn29rAnAbQ1suqqKeppZdYpvArXbSdYMTv5N2d3I4U1AUEPsVvhRSKP5xmRvNzECS7_9AnocX012gt_H7T0aIzTwiHQcjQ6QDqCcIQyow9bzncWdckUQ4qWJFr-FHFNX2TuNLUOvkbC0f7yy9gtE9cd3ri87gB9N_0wyVsMsMsHGNHx41s0DIO57qICcfEyuF-OGBL1bJ0OncnKROjAuzGymsIjMiMSkmsmn7RpyvjVPpLyNzWGmXJu_JBYYEBKM3b0YlRZ_DXzfVHTTNBUimwX3sAx898gTN8nxSg
