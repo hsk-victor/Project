@@ -1,5 +1,6 @@
 import os
 import re
+import base64
 import joblib
 import gdown
 import numpy as np
@@ -10,6 +11,39 @@ import streamlit as st
 # App Config
 # ----------------------------
 st.set_page_config(page_title="HDB Resale Price Predictor", page_icon="🏠", layout="centered")
+
+# ----------------------------
+# Background Image
+# ----------------------------
+BG_IMAGE_PATH = "Background.png"
+
+def set_background(image_path):
+    with open(image_path, "rb") as f:
+        data = base64.b64encode(f.read()).decode()
+    st.markdown(
+        f"""
+        <style>
+        .stApp {{
+            background-image: url("data:image/png;base64,{data}");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }}
+        .stMainBlockContainer {{
+            background-color: rgba(255, 255, 255, 0.92);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-top: 1rem;
+            max-width: 900px;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+if os.path.exists(BG_IMAGE_PATH):
+    set_background(BG_IMAGE_PATH)
 
 MODEL_PATH = "hdb_best_rs_rf_model.pkl"
 GDRIVE_FILE_ID = "1GTi5vOlOsOr3GpumiD-Z4wQ4j-pKMPpy"
@@ -34,7 +68,43 @@ FLAT_TYPE_MAP = {
     "MULTI-GENERATION": 7
 }
 
-FLAT_MODEL_CLASS_OPTIONS = ["Standard", "Premium", "others"]
+# All original flat models from the dataset
+ALL_FLAT_MODELS = [
+    "Model A", "Improved", "New Generation", "Simplified", "Standard", 
+    "Apartment", "Model A2", "2-room",
+    "Premium Apartment", "Premium Apartment Loft", "DBSS", "Premium Maisonette",
+    "Maisonette", "Model A-Maisonette", "Improved-Maisonette",
+    "Adjoined flat", "Multi Generation", "3Gen",
+    "Terrace", "Type S1", "Type S2"
+]
+
+# Mapping from flat_model to flat_model_class (as used in model training)
+FLAT_MODEL_TO_CLASS = {
+    # Standard Category
+    "Model A": "Standard",
+    "Improved": "Standard",
+    "New Generation": "Standard",
+    "Simplified": "Standard",
+    "Standard": "Standard",
+    "Apartment": "Standard",
+    "Model A2": "Standard",
+    "2-room": "Standard",
+    # Premium Category
+    "Premium Apartment": "Premium",
+    "Premium Apartment Loft": "Premium",
+    "DBSS": "Premium",
+    "Premium Maisonette": "Premium",
+    # Others Category
+    "Maisonette": "others",
+    "Model A-Maisonette": "others",
+    "Improved-Maisonette": "others",
+    "Adjoined flat": "others",
+    "Multi Generation": "others",
+    "3Gen": "others",
+    "Terrace": "others",
+    "Type S1": "others",
+    "Type S2": "others",
+}
 
 
 # ----------------------------
@@ -87,11 +157,12 @@ def build_feature_row(model, user_inputs):
     if town_col in row.columns:
         row.loc[0, town_col] = 1
 
-    # Flat model class dummies
-    for cls in FLAT_MODEL_CLASS_OPTIONS:
+    # Flat model class dummies (engineered from flat_model)
+    flat_model_class = FLAT_MODEL_TO_CLASS.get(user_inputs["flat_model"], "others")
+    for cls in ["Standard", "Premium", "others"]:
         c = f"flat_model_class_{cls}"
         if c in row.columns:
-            row.loc[0, c] = 1 if user_inputs["flat_model_class"] == cls else 0
+            row.loc[0, c] = 1 if flat_model_class == cls else 0
 
     return row
 
@@ -121,25 +192,24 @@ with st.form("predict_form"):
     floor_area_selected = st.slider(
         "Floor Area (sqm)",
         min_value=30.0,
-        max_value=250.0,
+        max_value=400.0,
         value=95.0,
         step=1.0
     )
 
-    lease_years = st.slider("Remaining Lease - Years", min_value=40, max_value=99, value=75, step=1)
-    lease_months = st.selectbox("Remaining Lease - Months", list(range(0, 12)), index=0)
+    lease_years = st.slider("Remaining Lease (Years)", min_value=40, max_value=99, value=75, step=1)
 
-    flat_model_class_selected = st.selectbox(
-        "Flat Model Class",
-        FLAT_MODEL_CLASS_OPTIONS,
+    flat_model_selected = st.selectbox(
+        "Flat Model",
+        ALL_FLAT_MODELS,
         index=0,
-        help="Engineered category used in your final model."
+        help="Select the flat model type. This will be categorized into Standard/Premium/Others for prediction."
     )
 
     submitted = st.form_submit_button("Predict HDB Price")
 
 if submitted:
-    remaining_lease_years = lease_years + (lease_months / 12.0)
+    remaining_lease_years = float(lease_years)
     storey_avg_value = storey_range_to_avg(storey_range_selected)
 
     user_inputs = {
@@ -148,13 +218,40 @@ if submitted:
         "storey_avg": storey_avg_value,
         "floor_area_sqm": floor_area_selected,
         "remaining_lease_years": remaining_lease_years,
-        "flat_model_class": flat_model_class_selected,
+        "flat_model": flat_model_selected,
     }
 
     X_input = build_feature_row(model, user_inputs)
     pred = float(model.predict(X_input)[0])
 
-    st.success(f"Predicted Resale Price: SGD {pred:,.2f}")
+    st.markdown(
+        f"""
+        <div style="background-color: #d4edda; border: 1px solid #c3e6cb; border-radius: 8px; padding: 1.2rem; margin: 1rem 0;">
+            <p style="font-size: 1.4rem; font-weight: 600; color: #155724; margin: 0;">
+                Predicted Resale Price: SGD {pred:,.2f}
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    with st.expander("Show transformed model input"):
-        st.dataframe(X_input.T.rename(columns={0: "value"}))
+    flat_model_class = FLAT_MODEL_TO_CLASS.get(flat_model_selected, "others")
+
+    with st.expander("Show prediction details"):
+        st.subheader("Your Inputs")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown(f"**Town:** {town_selected}")
+            st.markdown(f"**Flat Type:** {flat_type_selected}")
+            st.markdown(f"**Storey Range:** {storey_range_selected}")
+            st.markdown(f"**Floor Area:** {floor_area_selected} sqm")
+        with col2:
+            st.markdown(f"**Remaining Lease:** {lease_years} years")
+            st.markdown(f"**Flat Model:** {flat_model_selected}")
+            st.markdown(f"**Flat Model Category:** {flat_model_class}")
+
+        st.subheader("Transformed Model Input")
+        # Only show non-zero features for clarity
+        feature_df = X_input.T.rename(columns={0: "value"})
+        non_zero = feature_df[feature_df["value"] != 0]
+        st.dataframe(non_zero, use_container_width=True)
