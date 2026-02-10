@@ -7,14 +7,13 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-# ----------------------------
+# Run:  streamlit run streamlit_app.py
+
 # App Config
-# ----------------------------
 st.set_page_config(page_title="HDB Resale Price Predictor", page_icon="🏠", layout="centered")
 
-# ----------------------------
+
 # Background Image
-# ----------------------------
 BG_IMAGE_PATH = "Background.png"
 
 def set_background(image_path):
@@ -107,9 +106,10 @@ FLAT_MODEL_TO_CLASS = {
 }
 
 
-# ----------------------------
+
 # Helpers
-# ----------------------------
+
+## Build storey range labels
 def build_storey_ranges(max_floor=51, step=3):
     labels = []
     for start in range(1, max_floor + 1, step):
@@ -117,7 +117,7 @@ def build_storey_ranges(max_floor=51, step=3):
         labels.append(f"{start:02d} TO {end:02d}")
     return labels
 
-
+## Convert storey range label to average storey value
 def storey_range_to_avg(label):
     m = re.match(r"(\d+)\s*TO\s*(\d+)", label)
     if not m:
@@ -126,7 +126,7 @@ def storey_range_to_avg(label):
     high = float(m.group(2))
     return (low + high) / 2.0
 
-
+## Load Model with Caching
 @st.cache_resource
 def load_model():
     if not os.path.exists(MODEL_PATH):
@@ -134,7 +134,7 @@ def load_model():
         gdown.download(url, MODEL_PATH, quiet=False)
     return joblib.load(MODEL_PATH)
 
-
+## Build feature row for prediction
 def build_feature_row(model, user_inputs):
     cols = list(model.feature_names_in_)
     row = pd.DataFrame([np.zeros(len(cols), dtype=float)], columns=cols)
@@ -158,7 +158,7 @@ def build_feature_row(model, user_inputs):
         row.loc[0, town_col] = 1
 
     # Flat model class dummies (engineered from flat_model)
-    flat_model_class = FLAT_MODEL_TO_CLASS.get(user_inputs["flat_model"], "others")
+    flat_model_class = FLAT_MODEL_TO_CLASS.get(user_inputs["flat_model"], "Standard")
     for cls in ["Standard", "Premium", "others"]:
         c = f"flat_model_class_{cls}"
         if c in row.columns:
@@ -167,21 +167,20 @@ def build_feature_row(model, user_inputs):
     return row
 
 
-# ----------------------------
+
 # Load Model
-# ----------------------------
 try:
     model = load_model()
 except Exception as e:
     st.error(f"Model failed to load: {e}")
     st.stop()
 
-# ----------------------------
-# UI
-# ----------------------------
-st.title("HDB Resale Price Prediction")
-st.caption("Input flat details to estimate resale price using your tuned Random Forest model.")
 
+# UI
+st.title("HDB Resale Price Prediction")
+st.caption("Input flat details to estimate resale price using your tuned Random Forest model trained with the latest data.")
+
+## Input Form
 with st.form("predict_form"):
     town_selected = st.selectbox("Town", ALL_TOWNS, index=ALL_TOWNS.index("TAMPINES"))
     flat_type_selected = st.selectbox("Flat Type", list(FLAT_TYPE_MAP.keys()), index=3)
@@ -235,8 +234,8 @@ if submitted:
         unsafe_allow_html=True,
     )
 
-    flat_model_class = FLAT_MODEL_TO_CLASS.get(flat_model_selected, "others")
-
+    flat_model_class = FLAT_MODEL_TO_CLASS.get(flat_model_selected, "Standard")
+## Show Prediction Details
     with st.expander("Show prediction details"):
         st.subheader("Your Inputs")
         col1, col2 = st.columns(2)
@@ -254,4 +253,4 @@ if submitted:
         # Only show non-zero features for clarity
         feature_df = X_input.T.rename(columns={0: "value"})
         non_zero = feature_df[feature_df["value"] != 0]
-        st.dataframe(non_zero, use_container_width=True)
+        st.dataframe(non_zero, width="stretch")
